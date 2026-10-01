@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alcoolémie – calculateur multi-joueurs</title>
+<style>
+:root{
+  --bg:#f2f3ef;--card:#ffffff;--ink:#1c2320;--mute:#5b6560;--line:#d8dcd6;
+  --ok:#1e7a4c;--warn:#b26a00;--bad:#c0392b;--track:#e6e9e4;--btn:#1c2320;--btn-ink:#ffffff;--chip:#eef0eb;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141816;--card:#1d2320;--ink:#eef1ed;--mute:#9aa59f;--line:#2f3833;
+    --ok:#4cc38a;--warn:#e0a037;--bad:#ef6b5b;--track:#2a322d;--btn:#eef1ed;--btn-ink:#141816;--chip:#262e29;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141816;--card:#1d2320;--ink:#eef1ed;--mute:#9aa59f;--line:#2f3833;
+  --ok:#4cc38a;--warn:#e0a037;--bad:#ef6b5b;--track:#2a322d;--btn:#eef1ed;--btn-ink:#141816;--chip:#262e29;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font:16px/1.45 "DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:0 0 20px;font-size:.95rem}
+button,input,select{font:inherit;color:inherit}
+input,select{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:9px 12px}
+button.primary{background:var(--btn);color:var(--btn-ink);border-color:var(--btn);font-weight:600}
+button.ghost{border-color:transparent;background:none;color:var(--mute);padding:6px 8px}
+.add{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.add input[type=text]{flex:1 1 140px}
+.add input[type=number]{width:96px}
+.player{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.name{font-size:1.15rem;font-weight:700}
+.meta{display:flex;gap:6px;align-items:center;color:var(--mute);font-size:.9rem}
+.meta input{width:72px;padding:5px 8px}
+.meta select{padding:5px 8px}
+.reading{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:12px 0 6px}
+.big{font-size:2.4rem;font-weight:700;letter-spacing:-.02em;line-height:1}
+.big small{font-size:1rem;font-weight:500;color:var(--mute);margin-left:4px}
+.alt{color:var(--mute);font-size:.95rem}
+.gauge{position:relative;height:12px;border-radius:6px;background:var(--track);margin:12px 0 6px}
+.gauge .fill{position:absolute;inset:0 auto 0 0;border-radius:6px;transition:width .3s}
+.gauge .tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);opacity:.55}
+.ticks{position:relative;height:16px;font-size:.75rem;color:var(--mute)}
+.ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.status{font-weight:600;margin:6px 0 2px}
+.status.ok{color:var(--ok)}.status.warn{color:var(--warn)}.status.bad{color:var(--bad)}
+.info{color:var(--mute);font-size:.92rem;margin:0}
+.drinks{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 8px}
+.drinks button{background:var(--chip);border-color:transparent;font-size:.92rem;padding:7px 10px}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--mute);font-size:.92rem}
+.custom{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.custom input{width:84px}
+.log{list-style:none;margin:10px 0 0;padding:0;border-top:1px solid var(--line)}
+.log li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.93rem}
+.log li span{flex:1}
+.log input[type=time]{padding:4px 6px}
+.empty{color:var(--mute);text-align:center;padding:32px 0}
+.foot{color:var(--mute);font-size:.82rem;margin-top:24px}
+.row-end{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Alcoolémie multi-joueurs</h1>
+  <p class="sub">Limite en France : 0,25 mg/L d'air expiré (0,5 g/L de sang).</p>
+
+  <div class="add">
+    <input type="text" id="n-name" placeholder="Prénom" maxlength="24" aria-label="Prénom">
+    <select id="n-sex" aria-label="Sexe"><option value="H">Homme</option><option value="F">Femme</option></select>
+    <input type="number" id="n-weight" placeholder="kg" min="30" max="250" value="75" aria-label="Poids en kg">
+    <button class="primary" data-a="addPlayer">Ajouter</button>
+  </div>
+
+  <div id="players"></div>
+
+  <div class="row-end"><button class="ghost" data-a="resetAll">Tout effacer</button></div>
+
+  <p class="foot">Estimation par la formule de Widmark (élimination 0,15 g/L par heure), à titre indicatif. Le seuil est de 0,10 mg/L (0,2 g/L) pour les jeunes conducteurs. Seul un éthylotest fait foi : si tu as bu, ne conduis pas.</p>
+</main>
+
+<script>
+const KEY='alcoolemie-multi-v1';
+const LIMIT_G=0.5, NOVICE_G=0.2, BETA=0.15;
+const PRESETS=[
+  {l:'Bière 25 cl',ml:250,abv:5},
+  {l:'Demi 50 cl',ml:500,abv:5},
+  {l:'Bière forte 25 cl',ml:250,abv:8},
+  {l:'Bière forte 50 cl',ml:500,abv:8},
+  {l:'Cidre 25 cl',ml:250,abv:5},
+  {l:'Vin 12 cl',ml:120,abv:12},
+  {l:'Champagne 10 cl',ml:100,abv:12},
+  {l:'Ricard 2 cl',ml:20,abv:45},
+  {l:'Whisky 4 cl',ml:40,abv:40},
+  {l:'Rhum 4 cl',ml:40,abv:40},
+  {l:'Shot 4 cl',ml:40,abv:40}
+];
+
+let state={players:[]};
+try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);if(o&&Array.isArray(o.players))state=o;}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=(n,d=2)=>n.toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const hhmm=t=>new Date(t).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+function dur(h){const m=Math.round(h*60);const hh=Math.floor(m/60),mm=m%60;return hh?hh+' h '+String(mm).padStart(2,'0'):mm+' min';}
+
+function calc(p,now){
+  const r=p.sex==='F'?0.6:0.7, w=Math.max(30,+p.weight||70);
+  const ds=[...p.drinks].sort((a,b)=>a.t-b.t);
+  let bac=0,last=null,n=0;
+  for(const d of ds){
+    if(d.t>now)continue;
+    if(last!==null)bac=Math.max(0,bac-BETA*(d.t-last)/36e5);
+    bac+=(d.ml*d.abv/100*0.8)/(r*w);
+    last=d.t;n++;
+  }
+  if(last!==null)bac=Math.max(0,bac-BETA*(now-last)/36e5);
+  return {g:bac,air:bac/2,n};
+}
+
+function playerHTML(p,now){
+  const c=calc(p,now);
+  const pct=Math.min(c.air/0.5,1)*100;
+  let cls='ok',txt='Sous la limite légale';
+  let color='var(--ok)';
+  if(c.g>=LIMIT_G){cls='bad';txt='Au-dessus de la limite : ne conduit pas';color='var(--bad)';}
+  else if(c.g>=NOVICE_G){cls='warn';txt='Sous 0,25 mg/L, mais au-dessus du seuil jeune conducteur (0,10)';color='var(--warn)';}
+  else if(c.g<=0){txt='Estimé à zéro';}
+  let info='';
+  if(c.g>0){
+    if(c.g>LIMIT_G){const h=(c.g-LIMIT_G)/BETA;info+='Sous 0,25 mg/L dans '+dur(h)+' (vers '+hhmm(now+h*36e5)+'). ';}
+    const h0=c.g/BETA;info+='Retour à zéro dans '+dur(h0)+' (vers '+hhmm(now+h0*36e5)+').';
+  }
+  const presets=PRESETS.map((d,i)=>`<button data-a="drink" data-p="${p.id}" data-i="${i}">${esc(d.l)}</button>`).join('');
+  const log=[...p.drinks].sort((a,b)=>b.t-a.t).map(d=>{
+    const dt=new Date(d.t);const v=String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+    return `<li><span>${esc(d.l)}</span><input type="time" value="${v}" data-a="time" data-p="${p.id}" data-d="${d.id}" aria-label="Heure"><button class="ghost" data-a="rmDrink" data-p="${p.id}" data-d="${d.id}" aria-label="Supprimer ce verre">✕</button></li>`;
+  }).join('');
+  return `<section class="player">
+    <div class="head">
+      <div class="name">${esc(p.name)}</div>
+      <div class="meta">
+        <select data-a="sex" data-p="${p.id}" aria-label="Sexe"><option value="H"${p.sex==='H'?' selected':''}>Homme</option><option value="F"${p.sex==='F'?' selected':''}>Femme</option></select>
+        <input type="number" value="${p.weight}" min="30" max="250" data-a="weight" data-p="${p.id}" aria-label="Poids en kg"> kg
+        <button class="ghost" data-a="rmPlayer" data-p="${p.id}">Retirer</button>
+      </div>
+    </div>
+    <div class="reading">
+      <div class="big">${fmt(c.air)}<small>mg/L air</small></div>
+      <div class="alt">${fmt(c.g)} g/L de sang · ${c.n} verre${c.n>1?'s':''}</div>
+    </div>
+    <div class="gauge" role="img" aria-label="${fmt(c.air)} mg/L sur une limite de 0,25">
+      <div class="fill" style="width:${pct}%;background:${color}"></div>
+      <div class="tick" style="left:20%"></div><div class="tick" style="left:50%"></div>
+    </div>
+    <div class="ticks"><span style="left:20%">0,10</span><span style="left:50%">0,25</span></div>
+    <div class="status ${cls}">${txt}</div>
+    ${info?`<p class="info">${info}</p>`:''}
+    <div class="drinks">${presets}</div>
+    <details><summary>Autre boisson</summary>
+      <div class="custom">
+        <input type="number" id="cl-${p.id}" placeholder="cl" min="1" step="1" aria-label="Volume en cl">
+        <input type="number" id="abv-${p.id}" placeholder="% vol." min="0.5" max="96" step="0.5" aria-label="Degré d'alcool">
+        <button data-a="custom" data-p="${p.id}">Ajouter</button>
+      </div>
+    </details>
+    ${log?`<ul class="log">${log}</ul>`:''}
+  </section>`;
+}
+
+function render(){
+  const now=Date.now();
+  const el=document.getElementById('players');
+  el.innerHTML=state.players.length?state.players.map(p=>playerHTML(p,now)).join(''):'<div class="empty">Ajoute un joueur pour commencer.</div>';
+}
+
+const find=id=>state.players.find(p=>p.id===id);
+function addDrink(p,d){p.drinks.push({id:uid(),l:d.l,ml:d.ml,abv:d.abv,t:Date.now()});save();render();}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;
+  const a=b.dataset.a,p=find(b.dataset.p);
+  if(a==='addPlayer'){
+    const name=document.getElementById('n-name').value.trim();
+    const w=parseFloat(document.getElementById('n-weight').value);
+    if(!name){document.getElementById('n-name').focus();return;}
+    state.players.push({id:uid(),name,sex:document.getElementById('n-sex').value,weight:w>=30?w:75,drinks:[]});
+    document.getElementById('n-name').value='';save();render();
+  }else if(a==='drink'&&p){addDrink(p,PRESETS[+b.dataset.i]);}
+  else if(a==='custom'&&p){
+    const cl=parseFloat(document.getElementById('cl-'+p.id).value),abv=parseFloat(document.getElementById('abv-'+p.id).value);
+    if(!(cl>0)||!(abv>0))return;
+    addDrink(p,{l:`${fmt(cl,cl%1?1:0)} cl à ${fmt(abv,abv%1?1:0)} %`,ml:cl*10,abv});
+  }
+  else if(a==='rmDrink'&&p){p.drinks=p.drinks.filter(d=>d.id!==b.dataset.d);save();render();}
+  else if(a==='rmPlayer'&&p){state.players=state.players.filter(x=>x.id!==p.id);save();render();}
+  else if(a==='resetAll'){if(confirm('Effacer tous les joueurs et tous les verres ?')){state={players:[]};save();render();}}
+});
+
+document.addEventListener('change',e=>{
+  const t=e.target,a=t.dataset&&t.dataset.a;if(!a)return;
+  const p=find(t.dataset.p);if(!p)return;
+  if(a==='weight'){const w=parseFloat(t.value);if(w>=30&&w<=250)p.weight=w;}
+  else if(a==='sex'){p.sex=t.value;}
+  else if(a==='time'){
+    const d=p.drinks.find(x=>x.id===t.dataset.d);
+    if(d&&t.value){const [h,m]=t.value.split(':').map(Number);const dt=new Date(d.t);dt.setHours(h,m,0,0);d.t=dt.getTime();}
+  }
+  save();render();
+});
+
+document.getElementById('n-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.querySelector('[data-a="addPlayer"]').click();});
+
+setInterval(()=>{const ae=document.activeElement;if(ae&&/INPUT|SELECT/.test(ae.tagName))return;render();},30000);
+render();
+</script>
+</body>
+</html>
